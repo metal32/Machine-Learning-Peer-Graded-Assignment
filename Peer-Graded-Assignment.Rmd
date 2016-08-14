@@ -1,0 +1,162 @@
+---
+title: "Peer Graded Assignment"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Background
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement - a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants.
+
+##Data Loading
+The training data for this project are available here:
+
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv
+
+The test data are available here:
+
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv
+
+The data for this project come from http://groupware.les.inf.puc-rio.br/har. Full source:
+
+Velloso, E.; Bulling, A.; Gellersen, H.; Ugulino, W.; Fuks, H. "Qualitative Activity Recognition of Weight Lifting Exercises. Proceedings of 4th International Conference in Cooperation with SIGCHI (Augmented Human '13)". Stuttgart, Germany: ACM SIGCHI, 2013.
+
+My special thanks to the above mentioned authors for being so generous in allowing their data to be used for this kind of assignment.
+```{r}
+training<-read.csv("pml-training.csv",header = TRUE)
+testing  <- read.csv("pml-testing.csv", header= TRUE)
+```
+
+## Overview about Data
+"Six young health participants were asked to perform one set of 10 repetitions of the Unilateral Dumbbell Biceps Curl in five different fashions: exactly according to the specification (Class A), throwing the elbows to the front (Class B), lifting the dumbbell only halfway (Class C), lowering the dumbbell only halfway (Class D) and throwing the hips to the front (Class E).
+
+Class A corresponds to the specified execution of the exercise, while the other 4 classes correspond to common mistakes. Participants were supervised by an experienced weight lifter to make sure the execution complied to the manner they were supposed to simulate. The exercises were performed by six male participants aged between 20-28 years, with little weight lifting experience. We made sure that all participants could easily simulate the mistakes in a safe and controlled manner by using a relatively light dumbbell (1.25kg)."
+
+##Creating Training and Test set
+```{r, warning=FALSE, message=FALSE}
+library(caret)
+library(rpart.plot)
+library(randomForest)
+library(e1071)
+library(rpart)
+library(rattle)
+library(plyr)
+library(doSNOW)
+dim(training)
+str(training,list.len=15)
+cl<-makeCluster(8, type="SOCK")
+registerDoSNOW(cl)
+set.seed(2468)
+inTrain<-createDataPartition(training$classe, p=0.6,list=FALSE)
+trainset<-training[inTrain,]
+testset<-training[-inTrain,]
+dim(trainset)
+```
+##Cleaning of Data
+
+As the trainset has 160 variables we have to pre process it.So, let's remove all the columns having just NA values.After that we can remove the variables with no variability, that can be tested by Near Zero Variance function.
+```{r}
+na<-sapply(training, function(x) sum(is.na(x))>7800)
+trainset<-trainset[,!na]
+testset<-testset[,!na]
+dim(trainset)
+
+nzv<-nearZeroVar(trainset)
+trainset<-trainset[,-nzv]
+testset<-testset[,-nzv]
+dim(trainset)
+```
+Now we are left with 59 variables, and we can remove the starting colums that are just for information purpose.
+
+```{r}
+trainset <- trainset[, -(1:5)]
+testset  <- testset[, -(1:5)]
+dim(trainset)
+```
+
+##Correlation Analysis
+Using cor function we can calculate correlation between all the variables except the outcome variable.
+```{r}
+cl<-makeCluster(8, type="SOCK")
+registerDoSNOW(cl)
+library(corrplot)
+corMatrix <- cor(trainset[, -54])
+corrplot(corMatrix, order = "FPC", method = "color", type = "lower", 
+         tl.cex = 0.8, tl.col = rgb(0, 0, 0))
+stopCluster(cl)
+```
+
+Red color shows the Correlation in tha above figure. As the correlation is not very high so we will avoid using Principal component analysis or Principal factor analysis, automated pre processing, techniques to increase the variability between preictor variables as removing this Correlated variables. As we don't want to lose the interpretability of data.
+
+##Predicition Model Building
+I would like to test three models i.e. RandomForest, decision tree and generalized boosted model on the trainset and use it to predict values in testset and check the overall accuracy of it.
+
+###a) Random Forest
+
+```{r, warning=FALSE, message=FALSE}
+cl<-makeCluster(8, type="SOCK")
+registerDoSNOW(cl)
+set.seed(12345)
+controlRF <- trainControl(method="cv", number=3, verboseIter=FALSE)
+modFitRF <- train(classe ~ ., data=trainset, method="rf",
+                          trControl=controlRF)
+modFitRF$finalModel
+varImp(modFitRF)
+predictRF <- predict(modFitRF, newdata=testset)
+confMatRF <- confusionMatrix(predictRF, testset$classe)
+confMatRF
+stopCluster(cl)
+```
+#####So the overall accuracy we are getting from RandomForest model is 99.71%.
+
+###b) Generalized Boosted Model
+```{r, warning=FALSE, message=FALSE}
+cl<-makeCluster(8, type="SOCK")
+registerDoSNOW(cl)
+set.seed(12345)
+controlGBM <- trainControl(method = "repeatedcv", number = 5, repeats = 1)
+modFitGBM  <- train(classe ~ ., data=trainset, method = "gbm",
+                    trControl = controlGBM, verbose = FALSE)
+modFitGBM$finalModel
+predictGBM <- predict(modFitGBM, newdata=testset)
+confMatGBM <- confusionMatrix(predictGBM, testset$classe)
+confMatGBM
+stopCluster(cl)
+```
+#####So the overall accuracy we are getting from Generalized Boosted model is 98.65%.
+
+###c) Decision Tree 
+```{r, warning=FALSE, message=FALSE}
+set.seed(12345)
+modFitDecTree <- rpart(classe ~ ., data=trainset, method="class")
+prp(modFitDecTree)
+predictDecTree <- predict(modFitDecTree, newdata=testset, type="class")
+confMatDecTree <- confusionMatrix(predictDecTree, testset$classe)
+confMatDecTree
+
+
+```
+#####So the overall accuracy we are getting from Generalized Boosted model is 75.77%
+
+#####So it is clear that randomforest has the best fit in our model.
+#####The accuracy of the 3 regression modeling methods above are:
+   
+   * Random Forest : 0.9971
+   * GBM           : 0.9865
+   * Decision Tree : 0.7577
+So, our final model will be RandomFOrest.
+
+## Final Model Prediction on Test Data
+```{r}
+predictTEST <- predict(modFitRF, newdata=testing)
+predictTEST
+```
+Now let's make a data frame containing the test result and the result obtained from our model.
+```{r}
+testing$classe <- predictTEST
+submit <- data.frame(problem_id = testing$problem_id, classe = predictTEST)
+write.csv(submit, file = "Course-Project-Prediction-Quiz.csv", row.names = FALSE)
+```
+

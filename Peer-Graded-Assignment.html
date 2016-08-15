@@ -222,16 +222,8 @@ registerDoSNOW(cl)
 set.seed(12345)
 controlRF &lt;- trainControl(method=&quot;cv&quot;, number=3, verboseIter=FALSE)
 modFitRF &lt;- train(classe ~ ., data=trainset, method=&quot;rf&quot;,
-                          trControl=controlRF)</code></pre>
-<pre><code>## Warning: closing unused connection 12 (&lt;-DESKTOP-IVDDG9U:11963)</code></pre>
-<pre><code>## Warning: closing unused connection 11 (&lt;-DESKTOP-IVDDG9U:11963)</code></pre>
-<pre><code>## Warning: closing unused connection 10 (&lt;-DESKTOP-IVDDG9U:11963)</code></pre>
-<pre><code>## Warning: closing unused connection 9 (&lt;-DESKTOP-IVDDG9U:11963)</code></pre>
-<pre><code>## Warning: closing unused connection 8 (&lt;-DESKTOP-IVDDG9U:11963)</code></pre>
-<pre><code>## Warning: closing unused connection 7 (&lt;-DESKTOP-IVDDG9U:11963)</code></pre>
-<pre><code>## Warning: closing unused connection 6 (&lt;-DESKTOP-IVDDG9U:11963)</code></pre>
-<pre><code>## Warning: closing unused connection 5 (&lt;-DESKTOP-IVDDG9U:11963)</code></pre>
-<pre class="r"><code>modFitRF$finalModel</code></pre>
+                          trControl=controlRF)
+modFitRF$finalModel</code></pre>
 <pre><code>## 
 ## Call:
 ##  randomForest(x = x, y = y, mtry = param$mtry) 
@@ -319,27 +311,8 @@ registerDoSNOW(cl)
 set.seed(12345)
 controlGBM &lt;- trainControl(method = &quot;repeatedcv&quot;, number = 5, repeats = 1)
 modFitGBM  &lt;- train(classe ~ ., data=trainset, method = &quot;gbm&quot;,
-                    trControl = controlGBM, verbose = FALSE)</code></pre>
-<pre><code>## Loading required package: gbm</code></pre>
-<pre><code>## Warning: package 'gbm' was built under R version 3.3.1</code></pre>
-<pre><code>## Loading required package: survival</code></pre>
-<pre><code>## 
-## Attaching package: 'survival'</code></pre>
-<pre><code>## The following object is masked from 'package:caret':
-## 
-##     cluster</code></pre>
-<pre><code>## Loading required package: splines</code></pre>
-<pre><code>## Loading required package: parallel</code></pre>
-<pre><code>## 
-## Attaching package: 'parallel'</code></pre>
-<pre><code>## The following objects are masked from 'package:snow':
-## 
-##     clusterApply, clusterApplyLB, clusterCall, clusterEvalQ,
-##     clusterExport, clusterMap, clusterSplit, makeCluster,
-##     parApply, parCapply, parLapply, parRapply, parSapply,
-##     splitIndices, stopCluster</code></pre>
-<pre><code>## Loaded gbm 2.1.1</code></pre>
-<pre class="r"><code>modFitGBM$finalModel</code></pre>
+                    trControl = controlGBM, verbose = FALSE)
+modFitGBM$finalModel</code></pre>
 <pre><code>## A gradient boosted model with multinomial loss function.
 ## 150 iterations were performed.
 ## There were 53 predictors of which 45 had non-zero influence.</code></pre>
